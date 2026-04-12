@@ -589,14 +589,7 @@ export function AIPanel() {
               </div>
 
               <div className="flex-1 min-h-[200px] overflow-hidden rounded-lg border border-border/70 bg-background">
-                {/* WebTerminal removed */}
-                  sessionId={session.sessionId}
-                  prompt={session.prompt}
-                  displayPrompt={session.userMessage}
-                  reconnect={session.reconnect}
-                  themeSurface="page"
-                  onClose={() => handleSessionEnd(session.sessionId)}
-                />
+                {/* Terminal removed */}
               </div>
             </div>
           ))}
@@ -611,14 +604,7 @@ export function AIPanel() {
             key={`hidden-${session.id}`}
             style={{ width: 0, height: 0, overflow: "hidden", position: "absolute" }}
           >
-            {/* WebTerminal removed */}
-              sessionId={session.sessionId}
-              prompt={session.prompt}
-              displayPrompt={session.userMessage}
-              reconnect={session.reconnect}
-              themeSurface="page"
-              onClose={() => handleSessionEnd(session.sessionId)}
-            />
+            {/* Terminal removed */}
           </div>
         ))}
 
