@@ -250,20 +250,19 @@ export async function writePersona(slug: string, persona: Partial<AgentPersona> 
 
   const frontmatter: Record<string, unknown> = {
     name: merged.name,
-    role: merged.role,
-    provider: resolveEnabledProviderId(merged.provider),
-    heartbeat: merged.heartbeat,
-    budget: merged.budget,
-    active: merged.active,
-    workdir: merged.workdir,
-    focus: merged.focus,
-    tags: merged.tags,
-    // Always write these fields for consistency
     emoji: merged.emoji || "🤖",
     department: merged.department || "general",
     type: merged.type || "specialist",
     workspace: merged.workspace || "workspace",
     setupComplete: merged.setupComplete === true,
+    ...(merged.role ? { role: merged.role } : {}),
+    ...(merged.provider ? { provider: resolveEnabledProviderId(merged.provider) } : {}),
+    ...(merged.heartbeat ? { heartbeat: merged.heartbeat } : {}),
+    ...(merged.budget != null ? { budget: merged.budget } : {}),
+    ...(merged.active != null ? { active: merged.active } : {}),
+    ...(merged.workdir ? { workdir: merged.workdir } : {}),
+    ...(merged.focus && merged.focus.length > 0 ? { focus: merged.focus } : {}),
+    ...(merged.tags && merged.tags.length > 0 ? { tags: merged.tags } : {}),
     ...(merged.goals && merged.goals.length > 0 ? { goals: merged.goals } : {}),
     ...(merged.channels && merged.channels.length > 0 ? { channels: merged.channels } : {}),
   };

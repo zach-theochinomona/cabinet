@@ -1,28 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
-const AUTH_SALT_PATH = ".cabinet/auth-salt";
-const DATA_DIR = process.env.CABINET_DATA_DIR || path.join(process.cwd(), "data");
+// Edge Runtime compatible — no fs, no path, no process.cwd()
 
-function getSalt(): Uint8Array | null {
-  try {
-    return new Uint8Array(fs.readFileSync(path.join(DATA_DIR, AUTH_SALT_PATH)));
-  } catch {
-    return null;
-  }
-}
+const SALT_PREFIX = "cabinet-v2-";
 
 async function hashToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
-  const salt = getSalt();
-
-  if (!salt) {
-    // No salt yet — first run, use legacy hash for backward compat
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(password + "cabinet-salt"));
-    return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-  }
+  // Deterministic salt from password — avoids filesystem in Edge Runtime
+  const salt = encoder.encode(SALT_PREFIX + password.length.toString());
 
   const key = await crypto.subtle.importKey("raw", data, "PBKDF2", false, ["deriveBits"]);
   const derived = await crypto.subtle.deriveBits(
@@ -31,13 +17,12 @@ async function hashToken(password: string): Promise<string> {
     256
   );
 
-  const hashArray = Array.from(new Uint8Array(derived));
-  const saltHex = Array.from(salt).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `${saltHex}:${hashHex}`;
+  return Array.from(new Uint8Array(derived))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-// Cache the expected token to avoid recomputing on every request
+// Cache the expected token per password
 let cachedToken: { password: string; token: string } | null = null;
 
 export async function middleware(req: NextRequest) {
@@ -82,7 +67,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Protect all routes except static files and Next.js internals
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
