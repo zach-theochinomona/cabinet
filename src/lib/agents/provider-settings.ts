@@ -106,5 +106,8 @@ export function resolveEnabledProviderId(
     return firstEnabledProvider.id;
   }
 
-  return defaultProviderId || providerRegistry.defaultProvider;
+  // No enabled providers — throw explicitly instead of silently falling back
+  throw new Error(
+    "No enabled providers configured. Enable at least one provider before running agents."
+  );
 }
