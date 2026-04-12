@@ -102,23 +102,7 @@ function TerminalCommand({ command }: { command: string }) {
   );
 }
 
-type SetupStep = { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } };
-
-const PROVIDER_SETUP_STEPS: Record<string, SetupStep[]> = {
-  "claude-code": [
-    { title: "Get a Claude subscription", detail: "Any Claude Code subscription will do (Pro, Max, or Team).", link: { label: "Open Claude billing", url: "https://claude.ai/settings/billing" } },
-    { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
-    { title: "Install Claude Code", detail: "Run the following in your terminal:", cmd: "npm install -g @anthropic-ai/claude-code" },
-    { title: "Log in to Claude", detail: "Authenticate with your subscription:", cmd: "claude auth login" },
-    { title: "Verify login", detail: "Check that you're logged in:", cmd: "claude auth status" },
-  ],
-  "codex-cli": [
-    { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
-    { title: "Install Codex CLI", detail: "Run the following in your terminal:", cmd: "npm i -g @openai/codex" },
-    { title: "Log in to Codex", detail: "Authenticate with your ChatGPT or API account:", cmd: "codex login" },
-    { title: "Verify login", detail: "Check that you're logged in:", cmd: "codex login status" },
-  ],
-};
+// Setup steps now come from provider.installSteps — no hardcoded provider maps needed.
 
 export function SettingsPage() {
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -764,7 +748,7 @@ export function SettingsPage() {
                             const isReady = !!(provider.available && provider.authenticated);
                             const isInstalled = !!provider.available;
                             const isExpanded = expandedProvider === provider.id;
-                            const setupSteps = PROVIDER_SETUP_STEPS[provider.id] || [];
+                            const setupSteps = provider.installSteps || [];
                             const statusColor = isReady ? "text-green-500" : isInstalled ? "text-amber-500" : "text-muted-foreground";
                             const statusText = isReady
                               ? provider.version || "Ready"
