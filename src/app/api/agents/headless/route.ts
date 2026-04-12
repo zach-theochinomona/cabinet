@@ -14,7 +14,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cwd = workdir ? path.join(DATA_DIR, workdir) : DATA_DIR;
+    const cwd = workdir
+      ? (() => {
+          const resolved = path.resolve(DATA_DIR, workdir);
+          if (!resolved.startsWith(DATA_DIR)) {
+            throw new Error("Path traversal detected: workdir must be within data directory");
+          }
+          return resolved;
+        })()
+      : DATA_DIR;
 
     const result = await runOneShotProviderPrompt({
       providerId,

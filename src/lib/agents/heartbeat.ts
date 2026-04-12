@@ -162,8 +162,8 @@ async function processHeartbeatOutput(
       const timestamp = new Date().toISOString();
       const entry = `\n\n## ${timestamp}\n${contextUpdate[1].trim()}`;
       const existingContext = await readMemory(slug, "context.md");
-      const entries = existingContext.split(/\n## \d{4}-/).filter(Boolean);
-      const trimmed = entries.slice(-19).map((e, i) => i === 0 ? e : `## ${e.startsWith("20") ? "" : ""}${e}`).join("\n");
+      const entries = existingContext.split(/(?=\n## \d{4}-)/).filter(Boolean);
+      const trimmed = entries.slice(-19).join("");
       await writeMemory(slug, "context.md", trimmed + entry);
     }
 
