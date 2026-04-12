@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { Header } from "@/components/layout/header";
 import { KBEditor } from "@/components/editor/editor";
@@ -13,15 +13,11 @@ import { MediaViewer } from "@/components/editor/media-viewer";
 import { MermaidViewer } from "@/components/editor/mermaid-viewer";
 import { FileFallbackViewer } from "@/components/editor/file-fallback-viewer";
 import { HomeScreen } from "@/components/home/home-screen";
-import { AgentsWorkspace } from "@/components/agents/agents-workspace";
-import { JobsManager } from "@/components/jobs/jobs-manager";
 import { SettingsPage } from "@/components/settings/settings-page";
-import { TerminalTabs } from "@/components/terminal/terminal-tabs";
 import { AIPanel } from "@/components/ai-panel/ai-panel";
 import { SearchDialog } from "@/components/search/search-dialog";
 import { KeyboardShortcuts } from "@/components/shortcuts/keyboard-shortcuts";
 import { StatusBar } from "@/components/layout/status-bar";
-import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { UpdateDialog } from "@/components/layout/update-dialog";
 import { NotificationToasts } from "@/components/layout/notification-toasts";
 import { useCabinetUpdate } from "@/hooks/use-cabinet-update";
@@ -49,7 +45,6 @@ export function AppShell() {
   const selectedPath = useTreeStore((s) => s.selectedPath);
   const section = useAppStore((s) => s.section);
   const setSection = useAppStore((s) => s.setSection);
-  const terminalOpen = useAppStore((s) => s.terminalOpen);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = useAppStore((s) => s.setSidebarCollapsed);
   const setAiPanelCollapsed = useAppStore((s) => s.setAiPanelCollapsed);
@@ -67,11 +62,8 @@ export function AppShell() {
     applyUpdate,
   } = useCabinetUpdate({ autoRefresh: true });
 
-  // Sync navigation state with URL hash + localStorage
   useHashRoute();
 
-  // Onboarding wizard state
-  const [showWizard, setShowWizard] = useState<boolean | null>(null);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [dismissedUpdateVersion, setDismissedUpdateVersion] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -85,40 +77,6 @@ export function AppShell() {
   useEffect(() => {
     loadTree();
   }, [loadTree]);
-
-  // Auto-refresh sidebar when /data changes (detected via SSE)
-  useEffect(() => {
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource("/api/agents/events");
-      es.addEventListener("tree_changed", () => loadTree());
-      es.addEventListener("conversation_completed", (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          window.dispatchEvent(
-            new CustomEvent("cabinet:conversation-completed", { detail: data })
-          );
-        } catch { /* ignore */ }
-      });
-    } catch {
-      // SSE not supported
-    }
-    return () => es?.close();
-  }, [loadTree]);
-
-  // Check if company config exists (first-time setup)
-  useEffect(() => {
-    fetch("/api/agents/config")
-      .then((r) => r.json())
-      .then((data) => setShowWizard(!data.exists))
-      .catch(() => setShowWizard(false));
-  }, []);
-
-  const handleWizardComplete = useCallback(() => {
-    setShowWizard(false);
-    setSection({ type: "home" });
-    loadTree();
-  }, [setSection, loadTree]);
 
   function handleUpdateLater() {
     const latestVersion = update?.latest?.version;
@@ -134,7 +92,6 @@ export function AppShell() {
   }
 
   const selectedNode = selectedPath ? findNode(nodes, selectedPath) : null;
-  // For paths not in the tree (e.g. .agents/ workspace files), infer type from extension
   const inferredType = !selectedNode && selectedPath
     ? selectedPath.endsWith(".csv") ? "csv"
     : selectedPath.endsWith(".pdf") ? "pdf"
@@ -165,7 +122,6 @@ export function AppShell() {
   const effectiveUpdateDialogOpen =
     updateDialogOpen || hasPersistentUpdateState || shouldPromptForUpdate;
 
-  // Auto-collapse sidebar + AI panel when entering app mode
   const prevIsApp = useRef(false);
   useEffect(() => {
     if (isApp && !prevIsApp.current) {
@@ -180,25 +136,10 @@ export function AppShell() {
     setAiPanelCollapsed(false);
   };
 
-  // Determine what to render in the main area
   const renderContent = () => {
-    // System sections (non-page views)
     if (section.type === "home") return <HomeScreen />;
     if (section.type === "settings") return <SettingsPage />;
-    if (section.type === "agents") {
-      return <AgentsWorkspace selectedScope="all" selectedAgentSlug={null} />;
-    }
-    if (section.type === "agent") {
-      return (
-        <AgentsWorkspace
-          selectedScope="agent"
-          selectedAgentSlug={section.slug || null}
-        />
-      );
-    }
-    if (section.type === "jobs") return <JobsManager />;
 
-    // Page-based views (when a KB page is selected)
     if (isApp && selectedNode) {
       return (
         <WebsiteViewer
@@ -212,22 +153,12 @@ export function AppShell() {
     if (isCsv && (selectedNode || selectedPath)) {
       const csvPath = selectedNode?.path || selectedPath!;
       const csvTitle = selectedNode?.frontmatter?.title || selectedNode?.name || csvPath.split("/").pop() || "CSV";
-      return (
-        <CsvViewer
-          path={csvPath}
-          title={csvTitle}
-        />
-      );
+      return <CsvViewer path={csvPath} title={csvTitle} />;
     }
     if (isPdf && (selectedNode || selectedPath)) {
       const pdfPath = selectedNode?.path || selectedPath!;
       const pdfTitle = selectedNode?.frontmatter?.title || selectedNode?.name || pdfPath.split("/").pop() || "PDF";
-      return (
-        <PdfViewer
-          path={pdfPath}
-          title={pdfTitle}
-        />
-      );
+      return <PdfViewer path={pdfPath} title={pdfTitle} />;
     }
     if (isWebsite && selectedNode) {
       return (
@@ -252,20 +183,17 @@ export function AppShell() {
       const mediaTitle = selectedNode?.frontmatter?.title || selectedNode?.name || mediaPath.split("/").pop() || "Media";
       return <MediaViewer path={mediaPath} title={mediaTitle} type={isVideo ? "video" : "audio"} />;
     }
-
     if (isMermaid && (selectedNode || selectedPath)) {
       const mmdPath = selectedNode?.path || selectedPath!;
       const mmdTitle = selectedNode?.frontmatter?.title || selectedNode?.name || mmdPath.split("/").pop() || "Diagram";
       return <MermaidViewer path={mmdPath} title={mmdTitle} />;
     }
-
     if (isUnknown && (selectedNode || selectedPath)) {
       const unkPath = selectedNode?.path || selectedPath!;
       const unkTitle = selectedNode?.frontmatter?.title || selectedNode?.name || unkPath.split("/").pop() || "File";
       return <FileFallbackViewer path={unkPath} title={unkTitle} />;
     }
 
-    // Default: editor
     return (
       <>
         <Header />
@@ -273,16 +201,6 @@ export function AppShell() {
       </>
     );
   };
-
-  // Show nothing while checking config
-  if (showWizard === null) {
-    return <div className="flex h-screen bg-background" />;
-  }
-
-  // Show onboarding wizard for first-time users
-  if (showWizard) {
-    return <OnboardingWizard onComplete={handleWizardComplete} />;
-  }
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -294,7 +212,6 @@ export function AppShell() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {renderContent()}
         </main>
-        {terminalOpen && <TerminalTabs />}
         <StatusBar />
       </div>
       {!aiPanelCollapsed && <AIPanel />}
@@ -308,22 +225,15 @@ export function AppShell() {
         backupPending={backupPending}
         backupPath={backupPath}
         actionError={actionError}
-        onOpenChange={(open) => {
-          if (open) {
-            setUpdateDialogOpen(true);
-            return;
-          }
-          handleUpdateLater();
-        }}
-        onRefresh={() => {
-          void refreshUpdate();
-        }}
+        onRefresh={() => { void refreshUpdate(); }}
         onApply={applyUpdate}
-        onCreateBackup={async () => {
-          await createBackup("data");
-        }}
+        onCreateBackup={async () => { await createBackup("data"); }}
         onOpenDataDir={openDataDir}
         onLater={handleUpdateLater}
+        onOpenChange={(open) => {
+          if (open) { setUpdateDialogOpen(true); return; }
+          handleUpdateLater();
+        }}
       />
       <NotificationToasts />
     </div>

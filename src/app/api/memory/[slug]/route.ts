@@ -3,13 +3,10 @@ import path from "path";
 import fs from "fs/promises";
 import {
   readMemory,
-  writeMemory,
   listMemoryFiles,
   readPersona,
-} from "@/lib/agents/persona-manager";
-import { DATA_DIR } from "@/lib/storage/path-utils";
-
-const MEMORY_DIR = path.join(DATA_DIR, ".agents", ".memory");
+  MEMORY_DIR,
+} from "@/lib/memory/memory-api";
 
 export async function GET(
   req: NextRequest,

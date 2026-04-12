@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { useAIPanelStore } from "@/stores/ai-panel-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAppStore } from "@/stores/app-store";
-import { WebTerminal } from "@/components/terminal/web-terminal";
 import type { TreeNode } from "@/types";
 import type { ConversationDetail, ConversationMeta } from "@/types/conversations";
 
@@ -590,7 +589,7 @@ export function AIPanel() {
               </div>
 
               <div className="flex-1 min-h-[200px] overflow-hidden rounded-lg border border-border/70 bg-background">
-                <WebTerminal
+                {/* WebTerminal removed */}
                   sessionId={session.sessionId}
                   prompt={session.prompt}
                   displayPrompt={session.userMessage}
@@ -612,7 +611,7 @@ export function AIPanel() {
             key={`hidden-${session.id}`}
             style={{ width: 0, height: 0, overflow: "hidden", position: "absolute" }}
           >
-            <WebTerminal
+            {/* WebTerminal removed */}
               sessionId={session.sessionId}
               prompt={session.prompt}
               displayPrompt={session.userMessage}

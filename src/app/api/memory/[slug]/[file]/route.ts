@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-import { readMemory, writeMemory, readPersona } from "@/lib/agents/persona-manager";
+import { readMemory, writeMemory, readPersona } from "@/lib/memory/memory-api";
 import { readFileContent, fileExists } from "@/lib/storage/fs-operations";
 
 const ALLOWED_EXTENSIONS = new Set([".md", ".txt", ".json", ".yaml", ".yml"]);

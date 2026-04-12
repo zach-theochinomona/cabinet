@@ -4,7 +4,7 @@ import {
   readMemory,
   listMemoryFiles,
   readPersona,
-} from "@/lib/agents/persona-manager";
+} from "@/lib/memory/memory-api";
 
 export async function POST(
   req: NextRequest,
