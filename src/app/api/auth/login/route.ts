@@ -1,31 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import fs from "fs/promises";
-import path from "path";
-import { DATA_DIR } from "@/lib/storage/path-utils";
 
 const KB_PASSWORD = process.env.KB_PASSWORD || "";
 const AUTH_ENABLED = KB_PASSWORD.length > 0;
-
-const AUTH_DIR = path.join(DATA_DIR, ".cabinet");
-const SALT_FILE = path.join(AUTH_DIR, "auth-salt");
-
-async function getOrCreateSalt(): Promise<Uint8Array> {
-  try {
-    const existing = await fs.readFile(SALT_FILE);
-    return new Uint8Array(existing);
-  } catch {
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    await fs.mkdir(AUTH_DIR, { recursive: true });
-    await fs.writeFile(SALT_FILE, salt);
-    return salt;
-  }
-}
+const SALT_PREFIX = "cabinet-v2-";
 
 async function hashToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
-  const salt = await getOrCreateSalt();
+  const salt = encoder.encode(SALT_PREFIX + password.length.toString());
 
   const key = await crypto.subtle.importKey("raw", data, "PBKDF2", false, ["deriveBits"]);
   const derived = await crypto.subtle.deriveBits(
@@ -34,10 +17,9 @@ async function hashToken(password: string): Promise<string> {
     256
   );
 
-  const hashArray = Array.from(new Uint8Array(derived));
-  const saltHex = Array.from(salt).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `${saltHex}:${hashHex}`;
+  return Array.from(new Uint8Array(derived))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 // Simple in-memory rate limiting (per-process, resets on restart)
@@ -83,7 +65,7 @@ export async function POST(req: NextRequest) {
     secure: process.env.NODE_ENV === "production" && process.env.KB_ALLOW_HTTP !== "1",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days (reduced from 30)
+    maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
   return NextResponse.json({ ok: true });
