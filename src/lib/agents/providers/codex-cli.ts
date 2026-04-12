@@ -9,8 +9,10 @@ export const codexCliProvider: AgentProvider = {
   icon: "bot",
   installMessage: "Codex CLI not found. Install with: npm i -g @openai/codex",
   installSteps: [
-    { title: "Install Codex CLI", detail: "npm i -g @openai/codex" },
-    { title: "Log in", detail: "Run codex in your terminal and follow the login prompts." },
+    { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
+    { title: "Install Codex CLI", detail: "Run the following in your terminal:", cmd: "npm i -g @openai/codex" },
+    { title: "Log in to Codex", detail: "Authenticate with your ChatGPT or API account:", cmd: "codex login" },
+    { title: "Verify login", detail: "Check that you're logged in:", cmd: "codex login status" },
   ],
   command: "codex",
   commandCandidates: [

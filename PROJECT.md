@@ -46,7 +46,7 @@ npx create-cabinet@latest
 ### Last Agent Working On This
 - **Who:** hermes
 - **When:** 2026-04-12
-- **What:** Added PROJECT.md and devcontainer (fork setup)
+- **What:** Made provider UI agent-agnostic — removed hardcoded Claude/Codex references from settings and onboarding; setup steps now come from provider.installSteps
 
 ### What Needs To Happen Next
 1. 

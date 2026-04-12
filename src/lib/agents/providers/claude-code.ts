@@ -16,8 +16,10 @@ export const claudeCodeProvider: AgentProvider = {
   installMessage: "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code",
   installSteps: [
     { title: "Get a Claude subscription", detail: "Any Claude Code subscription will do (Pro, Max, or Team).", link: { label: "Open Claude billing", url: "https://claude.ai/settings/billing" } },
-    { title: "Install Claude Code", detail: "npm install -g @anthropic-ai/claude-code" },
-    { title: "Log in", detail: "Run claude in your terminal and follow the login prompts." },
+    { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
+    { title: "Install Claude Code", detail: "Run the following in your terminal:", cmd: "npm install -g @anthropic-ai/claude-code" },
+    { title: "Log in to Claude", detail: "Authenticate with your subscription:", cmd: "claude auth login" },
+    { title: "Verify login", detail: "Check that you're logged in:", cmd: "claude auth status" },
   ],
   command: "claude",
   commandCandidates: [

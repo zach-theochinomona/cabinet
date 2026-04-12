@@ -1069,20 +1069,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                       : isInstalled
                         ? "Installed but not logged in"
                         : "Not detected on this machine";
-                    const setupSteps: { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } }[] = p.id === "claude-code"
-                      ? [
-                          { title: "Get a Claude subscription", detail: "Any Claude Code subscription will do (Pro, Max, or Team).", link: { label: "Open Claude billing", url: "https://claude.ai/settings/billing" } },
-                          { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
-                          { title: "Install Claude Code", detail: "Run the following in your terminal:", cmd: "npm install -g @anthropic-ai/claude-code" },
-                          { title: "Log in to Claude", detail: "Authenticate with your subscription:", cmd: "claude auth login" },
-                          { title: "Verify login", detail: "Check that you're logged in:", cmd: "claude auth status" },
-                        ]
-                      : [
-                          { title: "Open a terminal", detail: "You'll need a terminal to run the next steps.", openTerminal: true },
-                          { title: "Install Codex CLI", detail: "Run the following in your terminal:", cmd: "npm i -g @openai/codex" },
-                          { title: "Log in to Codex", detail: "Authenticate with your ChatGPT or API account:", cmd: "codex login" },
-                          { title: "Verify login", detail: "Check that you're logged in:", cmd: "codex login status" },
-                        ];
+                    const setupSteps: { title: string; detail: string; cmd?: string; openTerminal?: boolean; link?: { label: string; url: string } }[] = p.installSteps || [];
                     return (
                       <div
                         key={p.id}
