@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, FileText, Tag, X, Sparkles, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useTreeStore } from "@/stores/tree-store";
-import { useEditorStore } from "@/stores/editor-store";
+import { useState, useEffect, useRef } from "react";
+import { Search, X, FileText, Tag, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/stores/app-store";
+import { useEditorStore } from "@/stores/editor-store";
 
 interface SearchResult {
   path: string;
@@ -18,252 +16,212 @@ interface SearchResult {
 }
 
 export function SearchDialog() {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [tagFilter, setTagFilter] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [aiSearching, setAiSearching] = useState(false);
-  const [aiResult, setAiResult] = useState("");
-  const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const { selectPage } = useTreeStore();
+  const { isSearchOpen, closeSearch } = useAppStore();
   const { loadPage } = useEditorStore();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Cmd+K to open
+  // Focus input when dialog opens
+  useEffect(() => {
+    if (isSearchOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setQuery("");
+      setResults([]);
+      setSelectedIndex(0);
+    }
+  }, [isSearchOpen]);
+
+  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen(true);
+      if (!isSearchOpen) return;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedIndex((prev) => Math.max(prev - 1, 0));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (results[selectedIndex]) {
+            handleSelectResult(results[selectedIndex]);
+          }
+          break;
+        case "Escape":
+          e.preventDefault();
+          closeSearch();
+          break;
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
-  const search = useCallback(
-    async (q: string, tag: string) => {
-      if (!q.trim() && !tag) {
-        setResults([]);
-        return;
-      }
-      setLoading(true);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen, results, selectedIndex, closeSearch]);
+
+  // Perform search
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+
+    const searchTimeout = setTimeout(async () => {
+      setIsSearching(true);
       try {
-        const params = new URLSearchParams();
-        if (q.trim()) params.set("q", q);
-        if (tag) params.set("tag", tag);
-        const res = await fetch(`/api/search?${params}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         if (res.ok) {
           const data = await res.json();
-          setResults(data);
+          setResults(data.results || []);
           setSelectedIndex(0);
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        console.error("Search failed:", error);
       } finally {
-        setLoading(false);
+        setIsSearching(false);
       }
-    },
-    []
-  );
+    }, 300);
 
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-    setAiResult("");
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(value, tagFilter), 200);
-  };
+    return () => clearTimeout(searchTimeout);
+  }, [query]);
 
-  const handleSelect = (result: SearchResult) => {
-    selectPage(result.path);
+  const handleSelectResult = (result: SearchResult) => {
     loadPage(result.path);
-    setOpen(false);
-    setQuery("");
-    setTagFilter("");
-    setResults([]);
+    closeSearch();
   };
 
-  const handleSetTag = (tag: string) => {
-    setTagFilter(tag);
-    search(query, tag);
+  const handleResultClick = (result: SearchResult) => {
+    handleSelectResult(result);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && results[selectedIndex]) {
-      e.preventDefault();
-      handleSelect(results[selectedIndex]);
-    }
-  };
-
-  // Collect unique tags from results for quick filtering
-  const allTags = Array.from(
-    new Set(results.flatMap((r) => r.tags))
-  ).slice(0, 8);
+  if (!isSearchOpen) return null;
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) {
-          setQuery("");
-          setTagFilter("");
-          setResults([]);
-        }
-      }}
-    >
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
-        <div className="flex items-center gap-2 px-3 border-b border-border">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Input
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={closeSearch}
+      />
+      
+      {/* Dialog */}
+      <div className="relative w-full max-w-2xl bg-background border rounded-lg shadow-2xl overflow-hidden">
+        {/* Search Input */}
+        <div className="flex items-center gap-3 p-4 border-b">
+          <Search className="h-5 w-5 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search knowledge base..."
             value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search pages..."
-            className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-[13px] h-11"
-            autoFocus
+            onChange={(e) => setQuery(e.target.value)}
+            className="flex-1 bg-transparent text-lg outline-none placeholder:text-muted-foreground"
           />
+          {query && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setQuery("")}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
-        {/* Active tag filter */}
-        {tagFilter && (
-          <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border">
-            <Tag className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[11px] bg-primary/10 text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
-              {tagFilter}
-              <button onClick={() => handleSetTag("")}>
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </span>
-          </div>
-        )}
-
-        {(results.length > 0 || loading) && (
-          <div className="max-h-[300px] overflow-y-auto py-1">
-            {loading && results.length === 0 && (
-              <div className="px-4 py-3 text-[13px] text-muted-foreground">
-                Searching...
-              </div>
-            )}
-            {results.map((result, i) => (
-              <button
-                key={result.path}
-                onClick={() => handleSelect(result)}
-                className={cn(
-                  "flex items-start gap-3 w-full px-3 py-2.5 text-left transition-colors",
-                  i === selectedIndex
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-medium truncate">
-                    {result.title}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate mt-0.5">
-                    {result.snippet}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-[10px] text-muted-foreground/50">
+        {/* Results */}
+        <div className="max-h-[60vh] overflow-y-auto">
+          {isSearching ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : results.length > 0 ? (
+            <div className="py-2">
+              {results.map((result, index) => (
+                <button
+                  key={result.path}
+                  onClick={() => handleResultClick(result)}
+                  className={cn(
+                    "w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors",
+                    index === selectedIndex && "bg-muted"
+                  )}
+                >
+                  <FileText className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{result.title}</div>
+                    <div className="text-sm text-muted-foreground truncate">
                       {result.path}
-                    </span>
-                    {result.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        role="button"
-                        tabIndex={-1}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSetTag(tag);
-                        }}
-                        className="text-[9px] bg-muted px-1 py-0.5 rounded hover:bg-primary/10 hover:text-primary cursor-pointer"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                    </div>
+                    {result.snippet && (
+                      <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        {result.snippet}
+                      </div>
+                    )}
+                    {result.tags.length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        {result.tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs"
+                          >
+                            <Tag className="h-3 w-3" />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tag suggestions */}
-        {!tagFilter && allTags.length > 0 && (
-          <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border">
-            <Tag className="h-3 w-3 text-muted-foreground/50" />
-            {allTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => handleSetTag(tag)}
-                className="text-[10px] bg-muted px-1.5 py-0.5 rounded hover:bg-primary/10 hover:text-primary transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {query && !loading && results.length === 0 && (
-          <div className="px-4 py-6 text-center text-[13px] text-muted-foreground space-y-3">
-            <p>No results found</p>
-            {!aiSearching && !aiResult && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={async () => {
-                  setAiSearching(true);
-                  try {
-                    const res = await fetch("/api/agents/headless", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        prompt: `Search the knowledge base at /data for content related to: "${query}". List any relevant pages, sections, or information you find. Be concise.`,
-                      }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setAiResult(data.output || "No relevant content found.");
-                    }
-                  } catch {
-                    setAiResult("AI search failed.");
-                  } finally {
-                    setAiSearching(false);
-                  }
-                }}
-              >
-                <Sparkles className="h-3 w-3" />
-                Ask AI
-              </Button>
-            )}
-            {aiSearching && (
-              <div className="flex items-center justify-center gap-2 text-xs">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Searching with AI...
-              </div>
-            )}
-            {aiResult && (
-              <div className="text-left bg-muted/50 rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-                {aiResult}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between px-3 py-2 border-t border-border text-[10px] text-muted-foreground/50">
-          <span>Navigate with arrow keys</span>
-          <span>Enter to select</span>
+                  {result.modified && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(result.modified).toLocaleDateString()}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : query ? (
+            <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+              <Search className="h-8 w-8 mb-2" />
+              <div>No results found for "{query}"</div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+              <Search className="h-8 w-8 mb-2" />
+              <div>Start typing to search...</div>
+              <div className="text-sm mt-1">Search pages, titles, and content</div>
+            </div>
+          )}
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between p-3 border-t bg-muted/30">
+          <div className="text-xs text-muted-foreground">
+            {results.length > 0 ? (
+              `${results.length} result${results.length === 1 ? "" : "s"} found`
+            ) : (
+              "Full-text search across all pages"
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>↑↓ Navigate</span>
+            <span>↵ Select</span>
+            <span>Esc Close</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
