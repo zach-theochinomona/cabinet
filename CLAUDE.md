@@ -2,7 +2,7 @@
 
 ## What is this project?
 
-Cabinet is an AI-first self-hosted knowledge base and startup OS. All content lives as markdown files on disk. The web UI provides WYSIWYG editing, a collapsible tree sidebar, drag-and-drop page organization, and an AI panel that can edit pages via Claude CLI.
+Cabinet is an AI-first self-hosted knowledge base and startup OS. All content lives as markdown files on disk. The web UI provides WYSIWYG editing, a collapsible tree sidebar, drag-and-drop page organization, and an AI panel.
 
 **Core philosophy:** Humans define intent. Agents do the work. The knowledge base is the shared memory between both.
 
@@ -15,7 +15,6 @@ Cabinet is an AI-first self-hosted knowledge base and startup OS. All content li
 - **Fonts:** Inter (sans) + JetBrains Mono (code)
 - **Icons:** Lucide (no emoji in system chrome)
 - **Markdown:** gray-matter (frontmatter), unified/remark (MD→HTML), turndown (HTML→MD)
-- **AI:** Claude CLI headless mode (`claude -p`) for page editing
 
 ## Architecture
 
@@ -27,12 +26,12 @@ src/
   app/api/assets/[...path]/  → GET/PUT static file serving + raw file writes
   app/api/search/            → GET full-text search
   app/api/git/               → Git log, diff, commit endpoints
-  app/api/ai/edit/           → POST instruction → Claude edits page
+  app/api/ai/render-md/      → POST markdown → HTML conversion
   app/api/memory/            → Agent memory API (read/write/search)
   stores/                    → Zustand (tree, editor, ai-panel, app)
   components/sidebar/        → Tree navigation, drag-and-drop, context menu
   components/editor/         → Tiptap WYSIWYG + toolbar, website/PDF/CSV viewers
-  components/ai-panel/       → Right-side AI chat panel
+  components/ai-panel/       → Right-side AI chat panel (UI only)
   components/search/         → Cmd+K search dialog
   components/layout/         → App shell, header
   lib/storage/               → Filesystem ops (path-utils, page-io, tree-builder)
@@ -53,10 +52,9 @@ data/                        → Content directory (KB pages, agent memory)
 5. **shadcn/ui uses base-ui** (not Radix) — DialogTrigger, ContextMenuTrigger etc. do NOT have `asChild`
 6. **Dark mode default** — theme toggle available, use `next-themes` with `attribute="class"`
 7. **Auto-save** — debounced 500ms after last keystroke in editor-store
-8. **AI edits** — Claude edits files DIRECTLY using its tools (read/edit), NOT by returning full content as stdout. The `/api/ai/edit` endpoint gives Claude the file path and instruction — Claude uses its file editing tools to make targeted changes.
-9. **Version restore** — users can restore any page to a previous git commit via the Version History panel
-10. **Embedded apps** — dirs with `index.html` + no `index.md` render as iframes. Add `.app` marker for full-screen mode (sidebar + AI panel auto-collapse)
-11. **Linked repos** — `.repo.yaml` in a data dir links it to a Git repo (local path + remote URL). Agents use this to read/search source code in context. See `data/CLAUDE.md` for full spec.
+8. **Version restore** — users can restore any page to a previous git commit via the Version History panel
+9. **Embedded apps** — dirs with `index.html` + no `index.md` render as iframes. Add `.app` marker for full-screen mode (sidebar + AI panel auto-collapse)
+10. **Linked repos** — `.repo.yaml` in a data dir links it to a Git repo (local path + remote URL). Agents use this to read/search source code in context. See `data/CLAUDE.md` for full spec.
 
 ## Memory API
 
@@ -89,19 +87,6 @@ data/.agents/
   {slug}/
     persona.md        → Agent persona (name, emoji, goals, focus areas)
 ```
-
-## AI Editing Behavior (CRITICAL)
-
-When the AI panel sends an edit request:
-
-1. **Claude gets the file path and instruction** — it should READ the file, then make TARGETED edits
-2. **NEVER replace the entire file** — only modify the specific parts the user asked about
-3. **PRESERVE existing content** — "add X" means INSERT, not REPLACE
-4. **The output shown in the AI panel** is Claude's summary of what it changed, NOT the file content
-5. **If content gets corrupted** — users can restore from Version History (clock icon → select commit → Restore)
-
-The AI panel supports `@` mentions — users type `@PageName` to attach other pages as context. The mentioned pages' content is fetched and appended to the prompt so Claude has full context.
-
 
 ## Commands
 
