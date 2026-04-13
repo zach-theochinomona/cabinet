@@ -95,3 +95,54 @@ npx create-cabinet@latest
 ---
 
 > **RULE: Never leave this file stale. If you touched the code, update this file.**
+
+## Recent Changes (2026-04-13)
+
+### Memory API Enhancements
+
+#### New Structured Endpoints
+- `GET/PUT /api/memory/:slug/context` - Agent context memory (read/write)
+- `GET/PUT /api/memory/:slug/decisions` - Agent decisions memory (read/write)
+- `GET/PUT /api/memory/:slug/learnings` - Agent learnings memory (read/write)
+
+These endpoints provide structured access to the three core memory types defined in the integration plan:
+- **Context**: Recent context entries (timestamped)
+- **Decisions**: Key decisions with reasoning
+- **Learnings**: Long-term insights
+
+#### Improved Search API
+- Added relevance scoring system:
+  - Exact phrase match: 10 points
+  - Individual term match: 2 points each
+- Added multi-term search support (searches for all terms)
+- Added highlighted context with line numbers
+- Results sorted by score (highest first), then file name, then line number
+- Limited to top 50 results for performance
+- Added `returned` field to show how many results were returned vs total matches
+
+#### Search Response Format
+```json
+{
+  "slug": "agent-name",
+  "query": "search terms",
+  "totalMatches": 42,
+  "returned": 50,
+  "results": [
+    {
+      "file": "context.md",
+      "line": 15,
+      "match": "The actual matching line",
+      "context": ">14: Previous line
+>15: The actual matching line
+>16: Next line",
+      "score": 10
+    }
+  ]
+}
+```
+
+### Integration Progress
+These changes align with Phase 1 of the Cabinet integration plan: "Make Memory System Agent-agnostic". External agents (Hermes, OpenClaw, etc.) can now:
+1. Read/write structured memory files via API
+2. Search memory with improved relevance ranking
+3. Use dedicated endpoints for context, decisions, and learnings
