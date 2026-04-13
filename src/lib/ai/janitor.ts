@@ -9,6 +9,7 @@ import fs from "fs/promises";
 import path from "path";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { readFileContent, writeFileContent, fileExists, listDirectory } from "@/lib/storage/fs-operations";
+import { getApiKey } from "@/lib/security/api-key-storage";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -158,9 +159,14 @@ async function callOpenRouter(
   messages: Array<{ role: string; content: string }>,
   maxTokens: number = 1000
 ): Promise<{ content: string; tokens: number }> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  // Try to get API key from secure storage first, then fall back to environment
+  let apiKey = await getApiKey("openrouter");
   if (!apiKey) {
-    throw new Error("OpenRouter API key not configured");
+    apiKey = process.env.OPENROUTER_API_KEY;
+  }
+  
+  if (!apiKey) {
+    throw new Error("OpenRouter API key not configured. Add it in Settings → AI & Janitor → API Keys.");
   }
 
   const response = await fetch(OPENROUTER_API_URL, {

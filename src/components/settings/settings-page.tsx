@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/app-store";
 import { useTheme } from "next-themes";
 import { JanitorPanel } from "@/components/ai/janitor-panel";
+import { ApiKeyManager } from "@/components/settings/api-key-manager";
 
 type Tab = "storage" | "appearance" | "ai" | "updates" | "about";
 
@@ -322,7 +323,15 @@ export function SettingsPage() {
               </p>
             </div>
 
-            <JanitorPanel />
+            <ApiKeyManager />
+            
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold mb-2">Janitor Service</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Background cleanup service that organizes your knowledge base.
+              </p>
+              <JanitorPanel />
+            </div>
           </div>
         )}
 

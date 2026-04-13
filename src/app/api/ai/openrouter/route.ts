@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getApiKey } from "@/lib/security/api-key-storage";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -44,11 +45,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get API key from environment
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Get API key from secure storage, then fall back to environment
+    let apiKey = await getApiKey("openrouter");
+    if (!apiKey) {
+      apiKey = process.env.OPENROUTER_API_KEY;
+    }
+    
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OpenRouter API key not configured" },
+        { error: "OpenRouter API key not configured. Add it in Settings → AI & Janitor → API Keys." },
         { status: 500 }
       );
     }
@@ -99,11 +104,16 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
   try {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Get API key from secure storage, then fall back to environment
+    let apiKey = await getApiKey("openrouter");
+    if (!apiKey) {
+      apiKey = process.env.OPENROUTER_API_KEY;
+    }
+    
     if (!apiKey) {
       return NextResponse.json({
         models: [],
-        message: "OpenRouter API key not configured",
+        message: "OpenRouter API key not configured. Add it in Settings → AI & Janitor → API Keys.",
       });
     }
 
