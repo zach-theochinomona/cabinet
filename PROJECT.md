@@ -3,6 +3,20 @@
 > **This file is the single source of truth for project state.**
 > Update it BEFORE you push. The next person to pull this repo reads this first.
 
+## Cleanup (2026-04-13)
+
+### Removed Misleading Documentation
+- CLAUDE.md previously mentioned Claude CLI integration for AI editing
+- This functionality doesn't exist in the codebase
+- Updated CLAUDE.md to reflect actual current state
+- Cabinet is now correctly documented as a knowledge base with Memory API
+
+### Current State
+- **Knowledge Base**: Markdown files on disk with WYSIWYG editing
+- **Memory API**: REST endpoints for agent memory (read/write/search)
+- **Git Integration**: Version history and auto-commit
+- **NO AI Editing**: No Claude CLI or other AI integration for page editing
+- **NO Agent Execution**: Agents connect via Memory API, not built-in execution
 ## What Is This?
 
 **Cabinet** — The AI-first startup OS where everything lives as markdown files on disk. No database. No vendor lock-in. Self-hosted. Your data never leaves your machine.
