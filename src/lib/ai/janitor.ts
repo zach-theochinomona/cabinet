@@ -9,7 +9,7 @@ import fs from "fs/promises";
 import path from "path";
 import { DATA_DIR } from "@/lib/storage/path-utils";
 import { readFileContent, writeFileContent, fileExists, listDirectory } from "@/lib/storage/fs-operations";
-import { getApiKey } from "@/lib/security/api-key-storage";
+import { callAI } from "./multi-provider";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -152,49 +152,24 @@ export async function saveJanitorStats(stats: JanitorTask[]): Promise<void> {
 }
 
 /**
- * Call OpenRouter API
+ * Call AI with automatic provider selection
  */
-async function callOpenRouter(
+async function callAIForJanitor(
   model: string,
   messages: Array<{ role: string; content: string }>,
   maxTokens: number = 1000
 ): Promise<{ content: string; tokens: number }> {
-  // Try to get API key from secure storage first, then fall back to environment
-  let apiKey = await getApiKey("openrouter");
-  if (!apiKey) {
-    apiKey = process.env.OPENROUTER_API_KEY;
-  }
-  
-  if (!apiKey) {
-    throw new Error("OpenRouter API key not configured. Add it in Settings → AI & Janitor → API Keys.");
-  }
-
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-      "X-Title": "Cabinet Janitor",
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.3, // Lower temperature for more consistent results
-      max_tokens: maxTokens,
-    }),
+  // Use the multi-provider service
+  const response = await callAI(messages, {
+    model,
+    maxTokens,
+    preferFree: true,
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error: ${error}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content || "";
-  const tokens = data.usage?.total_tokens || 0;
-
-  return { content, tokens };
+  
+  return {
+    content: response.content,
+    tokens: response.tokens,
+  };
 }
 
 /**
@@ -223,7 +198,7 @@ export async function cleanupMarkdown(
       },
     ];
 
-    const { content: cleaned, tokens } = await callOpenRouter(model, messages, 2000);
+    const { content: cleaned, tokens } = await callAIForJanitor(model, messages, 2000);
     
     if (cleaned && cleaned !== content) {
       await writeFileContent(filePath, cleaned);
@@ -271,7 +246,7 @@ Tags should be lowercase, single words or hyphenated phrases.`,
       },
     ];
 
-    const { content: tagsJson, tokens } = await callOpenRouter(model, messages, 100);
+    const { content: tagsJson, tokens } = await callAIForJanitor(model, messages, 100);
     
     try {
       const tags = JSON.parse(tagsJson);
@@ -338,7 +313,7 @@ Return ONLY the summary text, no additional formatting or explanations.`,
       },
     ];
 
-    const { content: summary, tokens } = await callOpenRouter(model, messages, 200);
+    const { content: summary, tokens } = await callAIForJanitor(model, messages, 200);
     
     if (summary) {
       // Add summary at the top of the file
@@ -377,7 +352,7 @@ Return ONLY a number (1-10), no explanations.`,
       },
     ];
 
-    const { content: scoreStr, tokens } = await callOpenRouter(model, messages, 10);
+    const { content: scoreStr, tokens } = await callAIForJanitor(model, messages, 10);
     
     const score = parseInt(scoreStr.trim(), 10);
     if (!isNaN(score) && score >= 1 && score <= 10) {
