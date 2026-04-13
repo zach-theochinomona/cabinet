@@ -19,13 +19,15 @@ import {
   Shield,
   Info,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/app-store";
 import { useTheme } from "next-themes";
+import { JanitorPanel } from "@/components/ai/janitor-panel";
 
-type Tab = "storage" | "appearance" | "updates" | "about";
+type Tab = "storage" | "appearance" | "ai" | "updates" | "about";
 
 export function SettingsPage() {
   const [dataDir, setDataDir] = useState("");
@@ -33,7 +35,7 @@ export function SettingsPage() {
   const [dataDirBrowsing, setDataDirBrowsing] = useState(false);
   const [dataDirSaving, setDataDirSaving] = useState(false);
   const [dataDirRestartNeeded, setDataDirRestartNeeded] = useState(false);
-  const VALID_TABS: Tab[] = ["storage", "appearance", "updates", "about"];
+  const VALID_TABS: Tab[] = ["storage", "appearance", "ai", "updates", "about"];
   const [tab, setTabState] = useState<Tab>("storage");
   const initializedRef = useRef(false);
   const [activeThemeName, setActiveThemeName] = useState<string | null>(null);
@@ -135,6 +137,7 @@ export function SettingsPage() {
           {[
             { id: "storage", label: "Storage", icon: Database },
             { id: "appearance", label: "Appearance", icon: Palette },
+            { id: "ai", label: "AI & Janitor", icon: Sparkles },
             { id: "updates", label: "Updates", icon: Download },
             { id: "about", label: "About", icon: Info },
           ].map((item) => (
@@ -307,6 +310,19 @@ export function SettingsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {tab === "ai" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">AI & Janitor</h2>
+              <p className="text-muted-foreground">
+                Configure AI-powered knowledge base cleanup and organization.
+              </p>
+            </div>
+
+            <JanitorPanel />
           </div>
         )}
 
