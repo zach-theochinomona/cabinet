@@ -26,29 +26,22 @@ src/
   app/api/upload/[...path]/  → POST file upload to page directory
   app/api/assets/[...path]/  → GET/PUT static file serving + raw file writes
   app/api/search/            → GET full-text search
-  app/api/tasks/             → GET/POST task board CRUD
-  app/api/agents/            → GET/POST agent sessions
-  app/api/jobs/              → GET/POST scheduled jobs
   app/api/git/               → Git log, diff, commit endpoints
   app/api/ai/edit/           → POST instruction → Claude edits page
-  stores/                    → Zustand (tree, editor, ai-panel, task, app)
+  app/api/memory/            → Agent memory API (read/write/search)
+  stores/                    → Zustand (tree, editor, ai-panel, app)
   components/sidebar/        → Tree navigation, drag-and-drop, context menu
   components/editor/         → Tiptap WYSIWYG + toolbar, website/PDF/CSV viewers
   components/ai-panel/       → Right-side AI chat panel
-  components/tasks/          → Kanban board
-  components/agents/         → Agent dashboard
-  components/jobs/           → Jobs manager UI
-  components/terminal/       → xterm.js web terminal
   components/search/         → Cmd+K search dialog
   components/layout/         → App shell, header
-  lib/storage/               → Filesystem ops (path-utils, page-io, tree-builder, task-io)
+  lib/storage/               → Filesystem ops (path-utils, page-io, tree-builder)
   lib/markdown/              → MD↔HTML conversion
   lib/git/                   → Git service (auto-commit, history, diff)
-  lib/agents/                → Agent session manager
-  lib/jobs/                  → Job scheduler (node-cron)
+  lib/memory/                → Agent memory system (persona, memory files)
 server/
-  terminal-server.ts         → Standalone WebSocket server for PTY sessions
-data/                        → Content directory (KB pages, tasks, jobs)
+  cabinet-daemon.ts          → Background daemon for file watching
+data/                        → Content directory (KB pages, agent memory)
 ```
 
 ## Key Rules
@@ -64,6 +57,38 @@ data/                        → Content directory (KB pages, tasks, jobs)
 9. **Version restore** — users can restore any page to a previous git commit via the Version History panel
 10. **Embedded apps** — dirs with `index.html` + no `index.md` render as iframes. Add `.app` marker for full-screen mode (sidebar + AI panel auto-collapse)
 11. **Linked repos** — `.repo.yaml` in a data dir links it to a Git repo (local path + remote URL). Agents use this to read/search source code in context. See `data/CLAUDE.md` for full spec.
+
+## Memory API
+
+Cabinet provides a shared memory system for AI agents. Memory is stored as markdown files on disk at `data/.agents/.memory/{slug}/`.
+
+### Memory Endpoints
+
+```
+GET    /api/memory/:slug               → List memory files
+GET    /api/memory/:slug/:file         → Read memory file
+PUT    /api/memory/:slug/:file         → Write memory file
+POST   /api/memory/:slug/append        → Append to memory file
+POST   /api/memory/:slug/search?q=     → Search memory files
+
+# Structured endpoints
+GET/PUT /api/memory/:slug/context       → Agent context memory
+GET/PUT /api/memory/:slug/decisions     → Agent decisions memory
+GET/PUT /api/memory/:slug/learnings     → Agent learnings memory
+```
+
+### Memory Structure
+
+```
+data/.agents/
+  .memory/
+    {slug}/
+      context.md      → Recent context entries (timestamped)
+      decisions.md    → Key decisions with reasoning
+      learnings.md    → Long-term insights
+  {slug}/
+    persona.md        → Agent persona (name, emoji, goals, focus areas)
+```
 
 ## AI Editing Behavior (CRITICAL)
 
@@ -82,7 +107,7 @@ The AI panel supports `@` mentions — users type `@PageName` to attach other pa
 
 ```bash
 npm run dev          # Start Next.js dev server on localhost:3000
-npm run dev:terminal # Start terminal WebSocket server on localhost:3001
+npm run dev:daemon   # Start background daemon for file watching
 npm run dev:all      # Start both servers
 npm run debug:chrome # Launch Chrome with CDP on localhost:9222 for frontend debugging
 npm run build        # Production build

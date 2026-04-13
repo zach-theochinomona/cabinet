@@ -5,7 +5,6 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "next dev",
-    "dev:terminal": "tsx server/terminal-server.ts",
     "dev:daemon": "tsx server/cabinet-daemon.ts",
     "dev:all": "npm run dev & npm run dev:daemon",
     "debug:chrome": "bash scripts/launch-chrome-debug.sh",
@@ -20,8 +19,7 @@
     "electron:make": "npm run build && npm run electron:prep && electron-forge make",
     "lint": "eslint",
     "test:unit": "tsx --test test/update-system.test.ts",
-    "test": "tsx --test src/lib/agents/**/*.test.ts",
-    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper 2>/dev/null; xattr -d com.apple.provenance node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper 2>/dev/null; xattr -d com.apple.provenance node_modules/node-pty/prebuilds/darwin-arm64/pty.node 2>/dev/null; true"
+    "test": "tsx --test src/lib/agents/**/*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -39,10 +37,6 @@
     "@tiptap/pm": "^3.20.4",
     "@tiptap/react": "^3.20.4",
     "@tiptap/starter-kit": "^3.20.4",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/addon-unicode11": "^0.9.0",
-    "@xterm/addon-web-links": "^0.12.0",
-    "@xterm/xterm": "^6.0.0",
     "better-sqlite3": "^12.8.0",
     "chokidar": "^5.0.0",
     "class-variance-authority": "^0.7.1",
@@ -59,7 +53,6 @@
     "next": "16.2.1",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
-    "node-pty": "^1.1.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "rehype-stringify": "^10.0.1",
